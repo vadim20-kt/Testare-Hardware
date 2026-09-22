@@ -1,32 +1,44 @@
 # Sheetly
 
-Editor web modern pentru Google Sheets. Aplicația lucrează direct în documentul Google selectat, cu autosalvare și instrumente rapide pentru organizarea datelor.
+Sheetly este o aplicație web construită în Python cu Flask, destinată lucrului direct cu documente Google Sheets. Aplicația permite autentificarea prin Google OAuth, deschiderea unui spreadsheet, editarea datelor și gestionarea foilor dintr-o interfață modernă.
 
-## Funcții
+## Features
 
-- autentificare OAuth Google și selectare de foi din document;
-- editare directă a celulelor, inclusiv anteturi;
-- adăugare și ștergere de rânduri sau coloane;
+- autentificare OAuth Google;
+- deschidere și lucru direct într-un document Google Sheets;
+- selectare între mai multe foi ale documentului;
+- editare celulelor și anteturi;
+- adăugare și ștergere de rânduri și coloane;
 - creare și ștergere de foi;
-- salvare manuală prin butonul **Salvează** sau `Ctrl+S`;
-- import CSV local și export CSV al foii active;
+- salvare manuală prin butonul Save sau tastatura Ctrl+S;
+- import CSV din fișier local;
+- export al foii active în format CSV;
 - inserare rapidă de tabele și scheme de proces;
-- încărcare imagini de până la 8 MB: imaginea este încărcată în Drive și introdusă în celula selectată prin formula Google Sheets `IMAGE()`;
-- reîncărcare manuală din Google Sheets prin butonul **Reîncarcă**, utilă după modificări făcute de alți colaboratori.
+- încărcare imagini în Drive și inserare în celula selectată prin formula `IMAGE()`;
+- reîncărcare manuală din Google Sheets pentru a vedea modificările făcute de alți colaboratori.
 
-## Structura proiectului
+## Project structure
 
 ```text
-web_app.py             serverul Flask și integrarea Google Sheets/Drive
-templates/index.html   structura interfeței
-static/app.js          funcționalitatea din browser
-static/style.css       designul aplicației
-requirements.txt       dependențele Python necesare
-credentials.json       configurarea OAuth locală (nu se publică)
-token.json             autorizarea locală (nu se publică)
+web_app.py             backend Flask și integrare Google Sheets / Drive
+templates/index.html   interfață principală
+static/app.js          logica frontend și interacțiuni browser
+static/style.css       stilizare UI
+requirements.txt       dependențe Python
+credentials.json       fișier OAuth local (nu se publică)
+token.json             token de autentificare local (nu se publică)
+.gitignore             exclude fișiere sensibile și cache-uri locale
 ```
 
-## Instalare și rulare
+## Requirements
+
+- Python 3.10+
+- un proiect Google Cloud cu API-uri activate:
+  - Google Sheets API
+  - Google Drive API
+- un OAuth Client ID de tip Web application
+
+## Local setup
 
 ```powershell
 python -m venv .venv
@@ -35,20 +47,44 @@ python -m pip install -r requirements.txt
 python web_app.py
 ```
 
-Deschide adresa afișată în terminal, de regulă `http://127.0.0.1:5000`.
+După pornire, deschide în browser:
 
-## Configurare Google OAuth
+```text
+http://127.0.0.1:5000
+```
 
-1. Activează Google Sheets API și Google Drive API în Google Cloud Console.
-2. Creează un OAuth Client ID de tip **Web application**.
-3. Adaugă redirect URI-ul `http://127.0.0.1:5000/oauth2callback`.
-4. Descarcă fișierul OAuth și salvează-l ca `credentials.json` în rădăcina proiectului.
-5. Pornește aplicația și apasă **Conectează Google**.
+## Google OAuth configuration
 
-După autorizare, `token.json` este creat automat. Ambele fișiere conțin date sensibile și sunt ignorate prin `.gitignore`; nu le publica.
+1. Intră în Google Cloud Console.
+2. Activează Google Sheets API și Google Drive API.
+3. Creează un OAuth Client ID de tip Web application.
+4. Adaugă redirect URI-ul:
 
-## Observații
+```text
+http://127.0.0.1:5000/oauth2callback
+```
 
-- Pentru rulare publică folosește HTTPS și setează o valoare aleatoare pentru `FLASK_SECRET_KEY`.
-- Dacă permisiunile au fost revocate sau tokenul a expirat, reconectează contul din aplicație.
-- Aplicația acceptă linkuri `docs.google.com/spreadsheets/d/...`.
+5. Descarcă fișierul JSON de autentificare și salvează-l ca `credentials.json` în rădăcina proiectului.
+6. Pornește aplicația și apasă pe butonul `Conectează Google`.
+
+După autorizare, aplicația va crea automat `token.json` pentru sesiunea locală.
+
+> Atât `credentials.json`, cât și `token.json` conțin date sensibile și nu trebuie publicate pe GitHub.
+
+## Security notes
+
+- nu încărca niciodată `credentials.json` sau `token.json` într-un repository public;
+- pentru deployment în producție: folosește HTTPS și setează o variabilă sigură pentru `FLASK_SECRET_KEY`;
+- dacă tokenul expiră sau permisiunile sunt revocate, reconectează aplicația din interfață.
+
+## Supported links
+
+Aplicația acceptă linkuri de tip:
+
+```text
+https://docs.google.com/spreadsheets/d/...
+```
+
+## License
+
+Proiectul este destinat în principal pentru demonstrație și dezvoltare locală în cadrul unui proiect de studiu.
