@@ -6,15 +6,15 @@ import socket
 import uuid
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
-
 os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")
 
-from flask import Flask, jsonify, redirect, render_template, request, session, url_for
+import urllib.request
+from flask import Flask, jsonify, redirect, render_template, request, session, url_for, send_file, Response
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
+from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 
 GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -381,6 +381,7 @@ def create_table():
         return api_error(error)
 
 
+
 @app.post("/api/diagram")
 def create_diagram():
     try:
@@ -423,12 +424,49 @@ def upload_image():
             body={"name": f"sheet-image-{uuid.uuid4().hex}{extension}", "mimeType": mime_type},
             media_body=MediaIoBaseUpload(io.BytesIO(image_bytes), mimetype=mime_type),
             fields="id",
+            supportsAllDrives=True,
         ).execute()
-        drive.permissions().create(fileId=file["id"], body={"type": "anyone", "role": "reader"}).execute()
+
+        # 1. Permisiune publică pentru oricine are linkul
+        try:
+            drive.permissions().create(
+                fileId=file["id"],
+                body={"type": "anyone", "role": "reader"},
+                supportsAllDrives=True,
+            ).execute()
+        except Exception:
+            pass
+
+        # 2. Moștenește permisiunile colaboratorilor din foaia de calcul
+        try:
+            sheet_perms = drive.permissions().list(
+                fileId=document_id,
+                fields="permissions(type,role,emailAddress,domain)",
+                supportsAllDrives=True,
+            ).execute().get("permissions", [])
+            for perm in sheet_perms:
+                p_type = perm.get("type")
+                if p_type in {"user", "group"} and perm.get("emailAddress"):
+                    drive.permissions().create(
+                        fileId=file["id"],
+                        body={"type": p_type, "role": "reader", "emailAddress": perm["emailAddress"]},
+                        sendNotificationEmail=False,
+                        supportsAllDrives=True,
+                    ).execute()
+                elif p_type == "domain" and perm.get("domain"):
+                    drive.permissions().create(
+                        fileId=file["id"],
+                        body={"type": "domain", "role": "reader", "domain": perm["domain"]},
+                        supportsAllDrives=True,
+                    ).execute()
+        except Exception:
+            pass
+
         service = get_service()
         row, column = int(payload.get("row", 0)) + 1, int(payload.get("column", 0)) + 1
         cell = f"{column_name(column)}{row}"
-        image_url = f"https://drive.google.com/uc?export=view&id={file['id']}"
+        # export=download este formatul direct acceptat de Google Sheets pentru alți utilizatori
+        image_url = f"https://drive.google.com/uc?export=download&id={file['id']}"
         service.spreadsheets().values().update(
             spreadsheetId=document_id,
             range=f"'{session['sheet_title']}'!{cell}",
@@ -447,6 +485,55 @@ def upload_image():
                 TOKEN_PATH.unlink()
             return jsonify(error="Permisiunea Google Drive lipsește. Deschide /reauth, acceptă accesul Drive, apoi încearcă din nou."), 403
         return api_error(error)
+
+
+@app.get("/api/image/proxy/<file_id>")
+def proxy_image(file_id):
+    """Servește imaginea din Google Drive către orice utilizator fără restricții CORS sau cookies."""
+    try:
+        # 1. Încearcă prin Google Drive API dacă avem credențiale valide
+        credentials = get_credentials()
+        if credentials and credentials.valid:
+            try:
+                drive = build("drive", "v3", credentials=credentials, cache_discovery=False)
+                meta = drive.files().get(fileId=file_id, fields="mimeType", supportsAllDrives=True).execute()
+                mime_type = meta.get("mimeType", "image/png")
+                request_media = drive.files().get_media(fileId=file_id, supportsAllDrives=True)
+                stream = io.BytesIO()
+                downloader = MediaIoBaseDownload(stream, request_media)
+                done = False
+                while not done:
+                    _, done = downloader.next_chunk()
+                stream.seek(0)
+                res = send_file(stream, mimetype=mime_type)
+                res.headers["Cache-Control"] = "public, max-age=86400"
+                return res
+            except Exception:
+                pass
+
+        # 2. Încearcă prin CDN-ul Google Direct (lh3), thumbnail și download direct
+        candidate_urls = [
+            f"https://lh3.googleusercontent.com/d/{file_id}",
+            f"https://drive.google.com/thumbnail?id={file_id}&sz=w1200",
+            f"https://drive.google.com/uc?export=download&id={file_id}",
+        ]
+        for url in candidate_urls:
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+                with urllib.request.urlopen(req, timeout=8) as r:
+                    content_type = r.headers.get("Content-Type", "")
+                    # Acceptă doar dacă răspunsul este efectiv o imagine, nu pagină de login/eroare HTML
+                    if content_type.startswith("image/"):
+                        data = r.read()
+                        res = Response(data, mimetype=content_type)
+                        res.headers["Cache-Control"] = "public, max-age=86400"
+                        return res
+            except Exception:
+                continue
+
+        return jsonify(error="Imaginea nu a putut fi descărcată. Asigură-te că fișierul este partajat ca „Oricine are linkul”."), 404
+    except Exception as error:
+        return jsonify(error=f"Eroare proxy imagine: {error}"), 404
 
 
 @app.post("/api/save")

@@ -11,10 +11,54 @@
     <section id="workspace" class="workspace" hidden>
       <div class="document-bar"><div class="sheet-control"><span class="sheet-icon">▦</span><select id="sheet-select" aria-label="Selectează foaia"></select><button id="rename-sheet-button" class="icon-button" title="Redenumește foaia">✎</button><button id="new-sheet-button" class="icon-button" title="Foaie nouă">+</button><button id="delete-sheet-button" class="icon-button danger" title="Șterge foaia">×</button></div><div class="document-actions"><button id="reset-button" class="button ghost" title="Reîncarcă datele curente din Google Sheets">Reîncarcă</button><button id="export-button" class="button ghost">Exportă CSV</button><button id="save-button" class="button primary" disabled>Salvează</button></div></div>
       <section class="insights" aria-label="Rezumat foaie"><div class="insight-card"><span>RÂNDURI</span><strong id="rows-count">0</strong></div><div class="insight-card"><span>COLOANE</span><strong id="columns-count">0</strong></div><div class="insight-card"><span>CELULE</span><strong id="cells-count">0</strong></div><div class="insight-card status-card"><span>STARE</span><strong id="save-state">Pregătit</strong></div><div class="search-box"><span>⌕</span><input id="find-input" type="search" placeholder="Caută în foaie…"><button id="find-next-button" type="button" title="Următorul rezultat">↵</button></div></section>
-      <nav class="toolbar" aria-label="Instrumente foaie"><div class="tool-group"><button id="undo-button" class="tool-button" title="Anulează (Ctrl+Z)">↶</button><button id="redo-button" class="tool-button" title="Refă (Ctrl+Y)">↷</button><span class="toolbar-rule"></span><button id="add-row-button" class="tool-button">+ Rând</button><button id="delete-row-button" class="tool-button">− Rând</button><button id="add-column-button" class="tool-button">+ Coloană</button><button id="delete-column-button" class="tool-button">− Coloană</button></div><span class="toolbar-rule"></span><div class="tool-group"><button id="table-tool-button" class="tool-button">▦ Tabel</button><button id="diagram-tool-button" class="tool-button">◇ Schemă</button><button id="image-button" class="tool-button">▧ Imagine</button><button id="import-button" class="tool-button">↑ Import CSV</button></div><span class="toolbar-note">Salvare manuală · Ctrl+S</span></nav>
+      <nav class="toolbar" aria-label="Instrumente foaie"><div class="tool-group"><button id="undo-button" class="tool-button" title="Anulează (Ctrl+Z)">↶</button><button id="redo-button" class="tool-button" title="Refă (Ctrl+Y)">↷</button><span class="toolbar-rule"></span><button id="add-row-button" class="tool-button">+ Rând</button><button id="delete-row-button" class="tool-button">− Rând</button><button id="add-column-button" class="tool-button">+ Coloană</button><button id="delete-column-button" class="tool-button">− Coloană</button></div><span class="toolbar-rule"></span><div class="tool-group"><button id="table-tool-button" class="tool-button">▦ Tabel</button><button id="diagram-tool-button" class="tool-button">◇ Schemă</button><button id="image-button" class="tool-button">▧ Imagine</button><button id="import-button" class="tool-button">↑ Import CSV</button><span class="toolbar-rule"></span><button id="filter-toggle-button" class="tool-button" title="Deschide filtrele foii">⚲ Filtre<span id="filter-badge" class="filter-badge" hidden>0</span></button></div><span class="toolbar-note">Salvare manuală · Ctrl+S</span></nav>
       <section id="tools-panel" class="tools-panel" hidden><div id="table-tool" hidden><div class="tool-heading"><div><strong>Tabel rapid</strong><span>O linie pentru fiecare rând; virgula separă celulele.</span></div><button class="close-tool" data-close-tools>×</button></div><textarea id="table-input" placeholder="Produs,Stoc,Preț&#10;Caiet,24,18"></textarea><button id="insert-table-button" class="button primary">Inserează tabelul</button></div><div id="diagram-tool" hidden><div class="tool-heading"><div><strong>Schemă de proces</strong><span>nume | descriere | legătură, pe fiecare linie.</span></div><button class="close-tool" data-close-tools>×</button></div><input id="diagram-name" placeholder="Numele schemei"><textarea id="diagram-input" placeholder="Start | Primul pas | Analiză&#10;Final | Rezultat |"></textarea><button id="insert-diagram-button" class="button primary">Inserează schema</button></div></section>
       <input id="image-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden><input id="import-input" type="file" accept=".csv,text/csv" hidden>
-      <div class="grid-area"><div class="grid-scroll"><table id="data-table"><thead></thead><tbody></tbody></table></div><div id="empty-state" class="empty">Documentul nu conține încă date. Alege un șablon, adaugă un rând sau importă un CSV.</div></div><footer class="workspace-footer"><span id="selection-label">Nicio celulă selectată</span><span>Ctrl+S salvează · Ctrl+Z anulează · Ctrl+F caută · Ctrl+I adaugă o imagine</span></footer>
+      <div class="workspace-main">
+        <div class="grid-area"><div class="grid-scroll"><table id="data-table"><thead></thead><tbody></tbody></table></div><div id="empty-state" class="empty">Documentul nu conține încă date. Alege un șablon, adaugă un rând sau importă un CSV.</div></div>
+        <aside id="filter-sidebar" class="filter-sidebar" hidden>
+          <div class="filter-header">
+            <div class="filter-title">
+              <span class="filter-icon">⚲</span>
+              <strong>Filtre Foaie</strong>
+              <span id="filter-active-count" class="filter-active-count" hidden>0 active</span>
+            </div>
+            <div class="filter-header-actions">
+              <button id="reset-filters-button" class="filter-action-btn" type="button" title="Resetează toate filtrele foii">Resetează</button>
+              <button id="close-filter-button" class="icon-button" type="button" title="Închide panoul de filtre">×</button>
+            </div>
+          </div>
+          <div class="filter-search-wrap">
+            <input id="filter-column-search" type="search" placeholder="Caută în filtre coloane…" autocomplete="off">
+          </div>
+          <div id="filter-columns-list" class="filter-columns-list">
+            <!-- Coloanele și valorile unice ale foii active se generează dinamic -->
+          </div>
+        </aside>
+      </div>
+      <footer class="workspace-footer"><span id="selection-label">Nicio celulă selectată</span><span>Ctrl+S salvează · Ctrl+Z anulează · Ctrl+F caută · Ctrl+I adaugă o imagine</span></footer>
     </section>
-  </main><script src="{{ url_for('static', filename='app.js') }}"></script>
+  </main>
+
+  <div id="image-modal" class="image-modal" hidden>
+    <div class="image-modal-backdrop" id="modal-backdrop"></div>
+    <div class="image-modal-content">
+      <div class="image-modal-toolbar">
+        <span class="modal-title">Vizualizare Imagine</span>
+        <div class="modal-zoom-controls">
+          <button id="modal-zoom-out" class="modal-btn" type="button" title="Micșorează (-)">−</button>
+          <span id="modal-zoom-level" class="modal-zoom-level">100%</span>
+          <button id="modal-zoom-in" class="modal-btn" type="button" title="Mărește (+)">+</button>
+          <button id="modal-zoom-reset" class="modal-btn" type="button" title="Resetează zoom (100%)">↺</button>
+        </div>
+        <button id="modal-download" class="modal-btn primary" type="button" title="Descarcă imaginea">⭳ Descarcă</button>
+        <button id="modal-close" class="modal-btn danger" type="button" title="Închide (Esc)">✕</button>
+      </div>
+      <div id="modal-viewport" class="image-modal-viewport" title="Trage pentru a muta imaginea · Rotița mouse-ului pentru zoom">
+        <img id="modal-image" src="" alt="Previzualizare imagine">
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body></html>
